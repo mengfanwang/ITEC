@@ -1,0 +1,36 @@
+function [orgG, g, dat_in] = trackGraphBuilder(movieInfo, g)
+% build graph for tracking
+vNum = g.particleNum;
+g.n_nodes = 2*vNum+2; %% number of nodes in the graph
+dat_in = zeros(1e7,3); %% each row represents an edge from node in column 1 to node in column 2 with cost in column 3.
+
+% source/sink linking and observation linking
+k_dat = 0;
+for i = 1:vNum
+    k_dat = k_dat+3;
+    dat_in(k_dat-2,:) = [1      2*i     g.c_en];
+    dat_in(k_dat-1,:) = [2*i    2*i+1   movieInfo.Ci(i) ];
+    dat_in(k_dat,:)   = [2*i+1  g.n_nodes g.c_ex];
+end
+
+% transition linking
+for i=1:vNum
+    f2 = movieInfo.nei{i};
+    for j = 1:length(f2)
+        k_dat = k_dat+1;
+        dat_in(k_dat,:) = [2*i+1 2*f2(j) movieInfo.Cij{i}(j)];
+    end
+end
+dat_in = dat_in(1:k_dat,:);
+if (k_dat>1e7)
+    error('preSet a larger vector for graph builder!');
+end
+%dat_in = [dat_in repmat([0 1],size(dat_in,1),1)];  % capacity 0-1
+
+g.excess_node = [1 g.n_nodes];  %% push flow in the first node and collect it in the last node.
+% k shortest paths from residual network
+orgG = digraph(dat_in(:,1),dat_in(:,2),dat_in(:, 3)); % head, tail weight
+
+fprintf('finish graph building!\n');
+
+end
